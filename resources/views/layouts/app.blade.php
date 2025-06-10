@@ -354,7 +354,7 @@
               <li class="menu-header">TRANSAKSI</li>
               <li><a class="nav-link {{ Request::is('barang-masuk') ? 'active' : '' }}" href="barang-masuk"><i class="fa fa-solid fa-arrow-right"></i><span>Barang Masuk</span></a></li>
               <li><a class="nav-link {{ Request::is('barang-keluar') ? 'active' : '' }}" href="barang-keluar"><i class="fa fa-sharp fa-solid fa-arrow-left"></i> <span>Barang Keluar</span></a></li>
-              
+            
               <li class="menu-header">ANPR</li>
               <li><a class="nav-link {{ Request::is('anpr') ? 'active' : '' }}" href="{{ route('anpr.index') }}"><i class="fa fa-solid fa-camera"></i><span>Plate Recognition</span></a></li>
             

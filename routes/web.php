@@ -124,6 +124,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/anpr', [AnprController::class, 'index'])->name('anpr.index');
     Route::post('/anpr/detect', [AnprController::class, 'detect'])->name('anpr.detect');
     Route::post('/anpr/webcam', [AnprController::class, 'webcam'])->name('anpr.webcam');
+    Route::post('/anpr/stop', [AnprController::class, 'stop'])->name('anpr.stop');
 });
 
 Route::get('/health', function () {

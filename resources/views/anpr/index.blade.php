@@ -58,6 +58,21 @@
                         <div class="p-4 text-center">
                             <div id="webcam-container" class="mb-4" style="display: none;">
                                 <video id="webcam-video" width="640" height="480" autoplay playsinline style="border: 2px solid #ccc; border-radius: 8px;"></video>
+                                <canvas id="capture-canvas" style="display: none;"></canvas>
+                                <div class="mt-3">
+                                    <button type="button" class="btn btn-success" id="captureBtn" style="display: none;">
+                                        <i class="fas fa-camera"></i> Capture Frame
+                                    </button>
+                                </div>
+                                <div id="capture-result" class="mt-4" style="display: none;">
+                                    <h5>Capture Result:</h5>
+                                    <div id="captureContent" class="text-center">
+                                        <!-- Capture result will be displayed here -->
+                                    </div>
+                                    <div id="captureVehicleInfo" class="mt-4">
+                                        <!-- Vehicle information will be displayed here -->
+                                    </div>
+                                </div>
                             </div>
                             <button type="button" class="btn btn-primary" id="startWebcam">
                                 <i class="fas fa-play"></i> Start Webcam Detection
@@ -75,6 +90,13 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
+    // Setup CSRF token for all AJAX requests
+    $.ajaxSetup({
+        headers: {
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    });
+
     // Update file input label
     $('.custom-file-input').on('change', function() {
         let fileName = $(this).val().split('\\').pop();
@@ -157,7 +179,10 @@ $(document).ready(function() {
         const button = $(this);
         const webcamContainer = $('#webcam-container');
         const video = $('#webcam-video')[0];
+        const captureBtn = $('#captureBtn');
+        const canvas = $('#capture-canvas')[0];
         const errorDiv = $('#error-message');
+        let processPid = null;
 
         try {
             // Reset error message
@@ -169,10 +194,116 @@ $(document).ready(function() {
                 audio: false
             });
 
-            // Show webcam preview
+            // Add key press handler for 'Q'
+            const handleKeyPress = async (e) => {
+                if (e.key.toLowerCase() === 'q') {
+                    // Stop the detection process
+                    if (processPid) {
+                        try {
+                            await $.ajax({
+                                url: "{{ route('anpr.stop') }}",
+                                type: 'POST',
+                                data: {
+                                    _token: "{{ csrf_token() }}",
+                                    pid: processPid
+                                }
+                            });
+                        } catch (error) {
+                            console.error('Error stopping detection:', error);
+                        }
+                    }
+                    
+                    // Stop the webcam stream
+                    stream.getTracks().forEach(track => track.stop());
+                    webcamContainer.hide();
+                    button.prop('disabled', false).html('<i class="fas fa-play"></i> Start Webcam Detection');
+                    
+                    // Remove the key press handler
+                    document.removeEventListener('keypress', handleKeyPress);
+                }
+            };
+
+            // Add the key press handler
+            document.addEventListener('keypress', handleKeyPress);
+
+            // Show webcam preview and capture button
             video.srcObject = stream;
             webcamContainer.show();
+            captureBtn.show();
             button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Starting Detection...');
+
+            // Handle capture button click
+            captureBtn.off('click').on('click', function() {
+                // Set canvas dimensions to match video
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Draw current video frame to canvas
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Convert canvas to blob
+                canvas.toBlob(function(blob) {
+                    const formData = new FormData();
+                    formData.append('source', blob, 'capture.jpg');
+                    formData.append('_token', '{{ csrf_token() }}');
+                    
+                    // Show processing state
+                    captureBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
+                    
+                    // Send to server for processing
+                    $.ajax({
+                        url: "{{ route('anpr.detect') }}",
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function(response) {
+                            $('#capture-result').show();
+                            
+                            // Display the processed image
+                            if (response.result_path) {
+                                $('#captureContent').html(`<img src="${response.result_path}" class="img-fluid" alt="Capture Result">`);
+                            }
+                            
+                            // Display vehicle information
+                            let vehicleHtml = '<div class="table-responsive"><table class="table table-bordered mt-3">';
+                            vehicleHtml += '<thead><tr><th>Detected Plate</th><th>Status</th><th>Details</th></tr></thead><tbody>';
+                            
+                            if (response.vehicles && response.vehicles.length > 0) {
+                                response.vehicles.forEach(function(vehicle) {
+                                    vehicleHtml += '<tr>';
+                                    vehicleHtml += `<td>${vehicle.detected_number}</td>`;
+                                    if (vehicle.matched) {
+                                        vehicleHtml += '<td><span class="badge badge-success">Found</span></td>';
+                                        vehicleHtml += `<td>
+                                            <strong>Plate Number:</strong> ${vehicle.plate_number}<br>
+                                            <strong>Make:</strong> ${vehicle.make}<br>
+                                            <strong>Model:</strong> ${vehicle.model}
+                                        </td>`;
+                                    } else {
+                                        vehicleHtml += '<td><span class="badge badge-danger">Not Found</span></td>';
+                                        vehicleHtml += '<td>No matching vehicle found in database</td>';
+                                    }
+                                    vehicleHtml += '</tr>';
+                                });
+                            } else {
+                                vehicleHtml += '<tr><td colspan="3" class="text-center">No license plates detected</td></tr>';
+                            }
+                            
+                            vehicleHtml += '</tbody></table></div>';
+                            $('#captureVehicleInfo').html(vehicleHtml);
+                            
+                            // Reset capture button
+                            captureBtn.prop('disabled', false).html('<i class="fas fa-camera"></i> Capture Frame');
+                        },
+                        error: function(xhr) {
+                            const errorMsg = xhr.responseJSON?.message || 'An error occurred while processing the capture';
+                            Swal.fire('Error', errorMsg, 'error');
+                            captureBtn.prop('disabled', false).html('<i class="fas fa-camera"></i> Capture Frame');
+                        }
+                    });
+                }, 'image/jpeg', 0.9);
+            });
 
             // Start ANPR detection
             $.ajax({
@@ -183,17 +314,41 @@ $(document).ready(function() {
                 },
                 success: function(response) {
                     if (response.success) {
+                        processPid = response.pid;
+                        // Change button text to show active detection
+                        button.html('<i class="fas fa-circle text-danger"></i> Detection Running...');
+                        
                         Swal.fire({
                             title: 'Detection Started',
-                            text: response.message,
+                            text: 'Webcam detection started. Press Q to stop.',
                             icon: 'success',
-                            showConfirmButton: true,
-                            confirmButtonText: 'Stop Detection'
+                            showCancelButton: true,
+                            confirmButtonColor: '#3085d6',
+                            cancelButtonColor: '#d33',
+                            confirmButtonText: 'OK',
+                            cancelButtonText: 'Stop Detection'
                         }).then((result) => {
-                            // Stop the webcam stream
-                            stream.getTracks().forEach(track => track.stop());
-                            webcamContainer.hide();
-                            button.prop('disabled', false).html('<i class="fas fa-play"></i> Start Webcam Detection');
+                            if (result.isDismissed || result.isCanceled) {
+                                // Stop the detection process
+                                if (processPid) {
+                                    $.ajax({
+                                        url: "{{ route('anpr.stop') }}",
+                                        type: 'POST',
+                                        data: {
+                                            _token: "{{ csrf_token() }}",
+                                            pid: processPid
+                                        }
+                                    });
+                                }
+                                
+                                // Stop the webcam stream
+                                stream.getTracks().forEach(track => track.stop());
+                                webcamContainer.hide();
+                                button.prop('disabled', false).html('<i class="fas fa-play"></i> Start Webcam Detection');
+                                
+                                // Remove the key press handler
+                                document.removeEventListener('keypress', handleKeyPress);
+                            }
                         });
                     } else {
                         throw new Error(response.message || 'Failed to start detection');
