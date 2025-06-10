@@ -13,7 +13,7 @@
         </div>
         <div class="card-wrap">
           <div class="card-header">
-            <h4>Semua Barang</h4>
+            <h4 style="color: white" >Semua Barang</h4>
           </div>
           <div class="card-body">
             {{ $barang }}
@@ -28,7 +28,7 @@
         </div>
         <div class="card-wrap">
           <div class="card-header">
-            <h4>Barang Masuk</h4>
+            <h4 style="color: white">Barang Masuk</h4>
           </div>
           <div class="card-body">
             {{ $barangMasuk }}
@@ -43,7 +43,7 @@
         </div>
         <div class="card-wrap">
           <div class="card-header">
-            <h4>Barang Keluar</h4>
+            <h4 style="color: white">Barang Keluar</h4>
           </div>
           <div class="card-body">
             {{ $barangKeluar }}
@@ -58,7 +58,7 @@
         </div>
         <div class="card-wrap">
           <div class="card-header">
-            <h4>Pengguna</h4>
+            <h4 style="color: white">Pengguna</h4>
           </div>
           <div class="card-body">
             {{ $user }}

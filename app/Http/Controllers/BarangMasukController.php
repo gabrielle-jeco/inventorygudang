@@ -40,7 +40,7 @@ class BarangMasukController extends Controller
     public function create()
     {
         return view('barang-masuk.create', [
-            'barangs'   => Barang::all()
+            'barangs'   => Barang::all(),
         ]);
     }
 
@@ -73,7 +73,7 @@ class BarangMasukController extends Controller
             'supplier_id'       => $request->supplier_id,
             'kode_transaksi'    => $request->kode_transaksi,
             'user_id'           => auth()->user()->id
-        ]); 
+        ]);
 
         if ($barangMasuk) {
             $barang = Barang::where('nama_barang', $request->nama_barang)->first();
@@ -131,7 +131,7 @@ class BarangMasukController extends Controller
             $barang->stok -= $jumlahMasuk;
             $barang->save();
         }
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Data Barang Berhasil Dihapus!'
@@ -160,7 +160,7 @@ class BarangMasukController extends Controller
     public function getSatuan()
     {
        $satuans = Satuan::all();
-       
+
        return response()->json($satuans);
     }
 
