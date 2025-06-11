@@ -26,7 +26,7 @@ class LaporanBarangKeluarController extends Controller
         $tanggalMulai = $request->input('tanggal_mulai');
         $tanggalSelesai = $request->input('tanggal_selesai');
     
-        $barangKeluar = BarangKeluar::query();
+        $barangKeluar = BarangKeluar::with(['customer', 'vehicle']);
     
         if ($tanggalMulai && $tanggalSelesai) {
             $barangKeluar->whereBetween('tanggal_keluar', [$tanggalMulai, $tanggalSelesai]);
@@ -35,7 +35,7 @@ class LaporanBarangKeluarController extends Controller
         $data = $barangKeluar->get();
 
         if (empty($tanggalMulai) && empty($tanggalSelesai)) {
-            $data = BarangKeluar::all();
+            $data = BarangKeluar::with(['customer', 'vehicle'])->get();
         }
     
         return response()->json($data);
@@ -49,7 +49,7 @@ class LaporanBarangKeluarController extends Controller
         $tanggalMulai = $request->input('tanggal_mulai');
         $tanggalSelesai = $request->input('tanggal_selesai');
     
-        $barangKeluar = BarangKeluar::query();
+        $barangKeluar = BarangKeluar::with(['customer', 'vehicle']);
     
         if ($tanggalMulai && $tanggalSelesai) {
             $barangKeluar->whereBetween('tanggal_keluar', [$tanggalMulai, $tanggalSelesai]);
@@ -58,7 +58,7 @@ class LaporanBarangKeluarController extends Controller
         if ($tanggalMulai !== null && $tanggalSelesai !== null) {
             $data = $barangKeluar->get();
         } else {
-            $data = BarangKeluar::all();
+            $data = BarangKeluar::with(['customer', 'vehicle'])->get();
         }
         
         //Generate PDF

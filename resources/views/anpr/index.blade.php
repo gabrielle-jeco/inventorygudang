@@ -44,11 +44,45 @@
                             </form>
                             <div id="result" class="mt-4" style="display: none;">
                                 <h5>Detection Result:</h5>
-                                <div id="resultContent" class="text-center">
-                                    <!-- Result will be displayed here -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <img id="detection-result" src="" alt="Detection Result" class="img-fluid" style="display: none;">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Detected Plate</th>
+                                                        <th>Status</th>
+                                                        <th>Details</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="detection-results">
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div id="vehicleInfo" class="mt-4">
-                                    <!-- Vehicle information will be displayed here -->
+                                
+                                <div id="history-section" style="display: none;">
+                                    <h5 class="mt-4">Transaction History</h5>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>Date</th>
+                                                    <th>Transaction Code</th>
+                                                    <th>Type</th>
+                                                    <th>Item</th>
+                                                    <th>Quantity</th>
+                                                    <th>Partner</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="transaction-history">
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -118,50 +152,7 @@ $(document).ready(function() {
             contentType: false,
             success: function(response) {
                 $('#result').show();
-                let resultHtml = '';
-                
-                // Check if it's an image or video
-                if (response.result_path.match(/\.(jpg|jpeg|png|gif)$/i)) {
-                    resultHtml = `<img src="${response.result_path}" class="img-fluid" alt="Detection Result">`;
-                } else if (response.result_path.match(/\.(mp4|mov|avi)$/i)) {
-                    resultHtml = `
-                        <video controls class="img-fluid">
-                            <source src="${response.result_path}" type="video/mp4">
-                            Your browser does not support the video tag.
-                        </video>
-                    `;
-                }
-                
-                $('#resultContent').html(resultHtml);
-
-                // Display vehicle information
-                let vehicleHtml = '<div class="table-responsive"><table class="table table-bordered mt-3">';
-                vehicleHtml += '<thead><tr><th>Detected Plate</th><th>Status</th><th>Details</th></tr></thead><tbody>';
-                
-                if (response.vehicles && response.vehicles.length > 0) {
-                    response.vehicles.forEach(function(vehicle) {
-                        vehicleHtml += '<tr>';
-                        vehicleHtml += `<td>${vehicle.detected_number}</td>`;
-                        if (vehicle.matched) {
-                            vehicleHtml += '<td><span class="badge badge-success">Found</span></td>';
-                            vehicleHtml += `<td>
-                                <strong>Plate Number:</strong> ${vehicle.plate_number}<br>
-                                <strong>Make:</strong> ${vehicle.make}<br>
-                                <strong>Model:</strong> ${vehicle.model}
-                            </td>`;
-                        } else {
-                            vehicleHtml += '<td><span class="badge badge-danger">Not Found</span></td>';
-                            vehicleHtml += '<td>No matching vehicle found in database</td>';
-                        }
-                        vehicleHtml += '</tr>';
-                    });
-                } else {
-                    vehicleHtml += '<tr><td colspan="3" class="text-center">No license plates detected</td></tr>';
-                }
-                
-                vehicleHtml += '</tbody></table></div>';
-                $('#vehicleInfo').html(vehicleHtml);
-
+                displayResults(response);
                 Swal.fire('Success', response.message, 'success');
             },
             error: function(xhr) {
@@ -241,14 +232,14 @@ $(document).ready(function() {
                 // Draw current video frame to canvas
                 canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
                 
+                // Show processing state
+                captureBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
+                
                 // Convert canvas to blob
                 canvas.toBlob(function(blob) {
                     const formData = new FormData();
                     formData.append('source', blob, 'capture.jpg');
                     formData.append('_token', '{{ csrf_token() }}');
-                    
-                    // Show processing state
-                    captureBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
                     
                     // Send to server for processing
                     $.ajax({
@@ -262,7 +253,17 @@ $(document).ready(function() {
                             
                             // Display the processed image
                             if (response.result_path) {
-                                $('#captureContent').html(`<img src="${response.result_path}" class="img-fluid" alt="Capture Result">`);
+                                const img = new Image();
+                                img.onload = function() {
+                                    $('#captureContent').html(this);
+                                    $(this).addClass('img-fluid').attr('alt', 'Capture Result');
+                                };
+                                img.onerror = function() {
+                                    $('#captureContent').html('<div class="alert alert-danger">Failed to load detection result image</div>');
+                                };
+                                img.src = response.result_path;
+                            } else {
+                                $('#captureContent').html('<div class="alert alert-warning">No detection result image available</div>');
                             }
                             
                             // Display vehicle information
@@ -272,7 +273,7 @@ $(document).ready(function() {
                             if (response.vehicles && response.vehicles.length > 0) {
                                 response.vehicles.forEach(function(vehicle) {
                                     vehicleHtml += '<tr>';
-                                    vehicleHtml += `<td>${vehicle.detected_number}</td>`;
+                                    vehicleHtml += `<td>${vehicle.detected_number || 'No plate detected'}</td>`;
                                     if (vehicle.matched) {
                                         vehicleHtml += '<td><span class="badge badge-success">Found</span></td>';
                                         vehicleHtml += `<td>
@@ -298,7 +299,7 @@ $(document).ready(function() {
                         },
                         error: function(xhr) {
                             const errorMsg = xhr.responseJSON?.message || 'An error occurred while processing the capture';
-                            Swal.fire('Error', errorMsg, 'error');
+                            $('#captureContent').html(`<div class="alert alert-danger">${errorMsg}</div>`);
                             captureBtn.prop('disabled', false).html('<i class="fas fa-camera"></i> Capture Frame');
                         }
                     });
@@ -369,6 +370,72 @@ $(document).ready(function() {
         }
     });
 });
+
+function displayResults(data) {
+    const resultImg = document.getElementById('detection-result');
+    const resultsTable = document.getElementById('detection-results');
+    const historySection = document.getElementById('history-section');
+    const historyTable = document.getElementById('transaction-history');
+    
+    // Display the detection image
+    if (data.result_path) {
+        resultImg.src = data.result_path;
+        resultImg.style.display = 'block';
+        resultImg.onerror = function() {
+            resultImg.style.display = 'none';
+            Swal.fire('Error', 'Failed to load detection result image', 'error');
+        };
+    } else {
+        resultImg.style.display = 'none';
+    }
+    
+    // Clear previous results
+    resultsTable.innerHTML = '';
+    if (historyTable) {
+        historyTable.innerHTML = '';
+        historySection.style.display = 'none';
+    }
+    
+    // Display detection results
+    if (data.vehicles && data.vehicles.length > 0) {
+        data.vehicles.forEach(vehicle => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${vehicle.detected_number || 'No plate detected'}</td>
+                <td><span class="badge badge-${vehicle.matched ? 'success' : 'warning'}">${vehicle.matched ? 'Found' : 'Not Found'}</span></td>
+                <td>
+                    ${vehicle.matched ? `
+                        <strong>Plate Number:</strong> ${vehicle.plate_number}<br>
+                        <strong>Make:</strong> ${vehicle.make}<br>
+                        <strong>Model:</strong> ${vehicle.model}
+                    ` : 'Vehicle not registered in system'}
+                </td>
+            `;
+            resultsTable.appendChild(row);
+            
+            // If vehicle is matched and has history, display it
+            if (vehicle.matched && vehicle.barang_history && vehicle.barang_history.length > 0 && historySection) {
+                historySection.style.display = 'block';
+                vehicle.barang_history.forEach(transaction => {
+                    const historyRow = document.createElement('tr');
+                    historyRow.innerHTML = `
+                        <td>${transaction.tanggal}</td>
+                        <td>${transaction.kode_transaksi}</td>
+                        <td><span class="badge badge-${transaction.type === 'masuk' ? 'success' : 'info'}">${transaction.type === 'masuk' ? 'Receiving' : 'Shipping'}</span></td>
+                        <td>${transaction.nama_barang}</td>
+                        <td>${transaction.jumlah}</td>
+                        <td>${transaction.partner}</td>
+                    `;
+                    historyTable.appendChild(historyRow);
+                });
+            }
+        });
+    } else {
+        const row = document.createElement('tr');
+        row.innerHTML = '<td colspan="3" class="text-center">No license plates detected</td>';
+        resultsTable.appendChild(row);
+    }
+}
 </script>
 @endpush
 @endsection 

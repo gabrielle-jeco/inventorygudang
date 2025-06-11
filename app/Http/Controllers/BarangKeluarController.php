@@ -20,7 +20,8 @@ class BarangKeluarController extends Controller
         return view('barang-keluar.index', [
             'barangs'           => Barang::all(),
             'barangKeluar'      => BarangKeluar::all(),
-            'customers'         => Customer::all()
+            'customers'         => Customer::all(),
+            'vehicles'          => \App\Models\Vehicle::all()
         ]);
     }
 
@@ -28,8 +29,9 @@ class BarangKeluarController extends Controller
     {
         return response()->json([
             'success'   => true,
-            'data'      => BarangKeluar::all(),
-            'customer'  => Customer::all()
+            'data'      => BarangKeluar::with(['customer', 'vehicle'])->get(),
+            'customer'  => Customer::all(),
+            'vehicles'  => \App\Models\Vehicle::all()
         ]);
     }
 
@@ -81,6 +83,7 @@ class BarangKeluarController extends Controller
             'nama_barang'       => $request->nama_barang,
             'jumlah_keluar'     => $request->jumlah_keluar,
             'customer_id'       => $request->customer_id,
+            'vehicle_id'        => $request->vehicle_id,
             'kode_transaksi'    => $request->kode_transaksi,
             'user_id'           => auth()->user()->id
         ]); 

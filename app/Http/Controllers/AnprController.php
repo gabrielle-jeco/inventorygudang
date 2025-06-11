@@ -101,6 +101,10 @@ class AnprController extends Controller
             });
 
             if (!$process->isSuccessful()) {
+                Log::error('ANPR Detection - Process failed', [
+                    'exitCode' => $process->getExitCode(),
+                    'errorOutput' => $process->getErrorOutput()
+                ]);
                 throw new \RuntimeException($process->getErrorOutput());
             }
 
@@ -111,18 +115,21 @@ class AnprController extends Controller
             $platesFile = $outputDir . '/plates.json';
             Log::info('ANPR Detection - Checking for plates file', ['platesFile' => $platesFile]);
             
-            if (!file_exists($platesFile)) {
-                throw new \RuntimeException("Plates JSON file not found at: " . $platesFile);
-            }
-
-            $jsonContent = file_get_contents($platesFile);
-            if ($jsonContent === false) {
-                throw new \RuntimeException("Failed to read plates JSON file");
-            }
-
-            $detectedPlates = json_decode($jsonContent, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \RuntimeException("Failed to parse plates JSON: " . json_last_error_msg());
+            // Initialize empty plates array
+            $detectedPlates = [];
+            
+            // Try to read and parse the JSON file
+            if (file_exists($platesFile)) {
+                $jsonContent = file_get_contents($platesFile);
+                if ($jsonContent !== false) {
+                    $detectedPlates = json_decode($jsonContent, true);
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        Log::warning('ANPR Detection - JSON parse error', [
+                            'error' => json_last_error_msg()
+                        ]);
+                        $detectedPlates = []; // Reset to empty array on parse error
+                    }
+                }
             }
 
             // Search for vehicles with detected plate numbers
@@ -131,13 +138,50 @@ class AnprController extends Controller
                 $plateNumber = $plate['text'];
                 $vehicle = \App\Models\Vehicle::where('plate_number', 'LIKE', '%' . $plateNumber . '%')->first();
                 if ($vehicle) {
+                    // Get barang history
+                    $barangMasuk = $vehicle->barangMasuks()
+                        ->with('supplier')
+                        ->orderBy('tanggal_masuk', 'desc')
+                        ->get()
+                        ->map(function($bm) {
+                            return [
+                                'type' => 'masuk',
+                                'kode_transaksi' => $bm->kode_transaksi,
+                                'tanggal' => $bm->tanggal_masuk,
+                                'nama_barang' => $bm->nama_barang,
+                                'jumlah' => $bm->jumlah_masuk,
+                                'partner' => $bm->supplier->supplier
+                            ];
+                        });
+
+                    $barangKeluar = $vehicle->barangKeluars()
+                        ->with('customer')
+                        ->orderBy('tanggal_keluar', 'desc')
+                        ->get()
+                        ->map(function($bk) {
+                            return [
+                                'type' => 'keluar',
+                                'kode_transaksi' => $bk->kode_transaksi,
+                                'tanggal' => $bk->tanggal_keluar,
+                                'nama_barang' => $bk->nama_barang,
+                                'jumlah' => $bk->jumlah_keluar,
+                                'partner' => $bk->customer->customer
+                            ];
+                        });
+
+                    $barangHistory = $barangMasuk->concat($barangKeluar)
+                        ->sortByDesc('tanggal')
+                        ->values()
+                        ->all();
+
                     $vehicles[] = [
                         'plate_number' => $vehicle->plate_number,
                         'make' => $vehicle->make,
                         'model' => $vehicle->model,
                         'detected_number' => $plateNumber,
                         'confidence' => $plate['confidence'],
-                        'matched' => true
+                        'matched' => true,
+                        'barang_history' => $barangHistory
                     ];
                 } else {
                     $vehicles[] = [
@@ -150,7 +194,7 @@ class AnprController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => count($vehicles) > 0 ? 'Plate detection completed successfully' : 'No plates detected',
+                'message' => count($vehicles) > 0 ? 'Plate detection completed successfully' : 'No plates detected in the image',
                 'result_path' => asset($resultPath),
                 'vehicles' => $vehicles
             ]);
@@ -164,7 +208,7 @@ class AnprController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error processing the file: ' . $e->getMessage(),
-                'error_details' => $process->getErrorOutput()
+                'error_details' => $process->getErrorOutput() ?? 'No additional error details available'
             ], 500);
         } finally {
             // Clean up temporary files

@@ -48,6 +48,7 @@
                 <th>Nama Barang</th>
                 <th>Jumlah Masuk</th>
                 <th>Supplier</th>
+                <th>Kendaraan</th>
             </tr>
         </thead>
         <tbody>
@@ -59,6 +60,7 @@
                 <td>{{ $item->nama_barang}} </td>
                 <td>{{ $item->jumlah_masuk}} </td>
                 <td>{{ $item->supplier->supplier}} </td>
+                <td>{{ $item->vehicle ? $item->vehicle->plate_number . ' - ' . $item->vehicle->make . ' ' . $item->vehicle->model : '-' }}</td>
             </tr>
             @endforeach
         </tbody>

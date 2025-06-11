@@ -26,6 +26,7 @@
                                     <th>Nama Barang</th>
                                     <th>Stok Masuk</th>
                                     <th>Supplier</th>
+                                    <th>Kendaraan</th>
                                     <th>Opsi</th>
                                 </tr>
                             </thead>
@@ -98,6 +99,7 @@
                     $('#table_id').DataTable().clear();
                     $.each(response.data, function(key, value) {
                         let supplier = getSupplierName(response.supplier, value.supplier_id);
+                        let vehicle = value.vehicle ? `${value.vehicle.plate_number} - ${value.vehicle.make} ${value.vehicle.model}` : '-';
                         let barangMasuk = `
                 <tr class="barang-row" id="index_${value.id}">
                     <td>${counter++}</td>   
@@ -106,6 +108,7 @@
                     <td>${value.nama_barang}</td>
                     <td>${value.jumlah_masuk}</td>
                     <td>${supplier}</td>
+                    <td>${vehicle}</td>
                     <td>
                         <a href="javascript:void(0)" id="button_hapus_barangMasuk" data-id="${value.id}" class="btn btn-icon btn-danger btn-lg mb-2"><i class="fas fa-trash"></i> </a>
                     </td>
@@ -154,6 +157,7 @@
             let nama_barang = $('#nama_barang').val();
             let jumlah_masuk = $('#jumlah_masuk').val();
             let supplier_id = $('#supplier_id').val();
+            let vehicle_id = $('#vehicle_id').val();
             let token = $("meta[name='csrf-token']").attr("content");
 
             let formData = new FormData();
@@ -162,6 +166,7 @@
             formData.append('nama_barang', nama_barang);
             formData.append('jumlah_masuk', jumlah_masuk);
             formData.append('supplier_id', supplier_id);
+            formData.append('vehicle_id', vehicle_id);
             formData.append('_token', token);
 
             $.ajax({
@@ -193,6 +198,7 @@
                             $.each(response.data, function(key, value) {
                                 let supplier = getSupplierName(response.supplier,
                                     value.supplier_id);
+                                let vehicle = value.vehicle ? `${value.vehicle.plate_number} - ${value.vehicle.make} ${value.vehicle.model}` : '-';
                                 let barangMasuk = `
                                 <tr class="barang-row" id="index_${value.id}">
                                     <td>${counter++}</td>   
@@ -201,6 +207,7 @@
                                     <td>${value.nama_barang}</td>
                                     <td>${value.jumlah_masuk}</td>
                                     <td>${supplier}</td>
+                                    <td>${vehicle}</td>
                                     <td>
                                         <a href="javascript:void(0)" id="button_hapus_barangMasuk" data-id="${value.id}" class="btn btn-icon btn-danger btn-lg mb-2"><i class="fas fa-trash"></i> </a>
                                     </td>
@@ -320,6 +327,7 @@
                                         let supplier = getSupplierName(
                                             response.supplier, value
                                             .supplier_id);
+                                        let vehicle = value.vehicle ? `${value.vehicle.plate_number} - ${value.vehicle.make} ${value.vehicle.model}` : '-';
                                         let barangMasuk = `
                                         <tr class="barang-row" id="index_${value.id}">
                                             <td>${counter++}</td>   
@@ -328,6 +336,7 @@
                                             <td>${value.nama_barang}</td>
                                             <td>${value.jumlah_masuk}</td>
                                             <td>${supplier}</td>
+                                            <td>${vehicle}</td>
                                             <td>
                                                 <a href="javascript:void(0)" id="button_hapus_barangMasuk" data-id="${value.id}" class="btn btn-icon btn-danger btn-lg mb-2"><i class="fas fa-trash"></i> </a>
                                             </td>

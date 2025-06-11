@@ -14,4 +14,14 @@ class Vehicle extends Model
         'make',
         'model'
     ];
+
+    public function barangMasuks()
+    {
+        return $this->hasMany(BarangMasuk::class);
+    }
+
+    public function barangKeluars()
+    {
+        return $this->hasMany(BarangKeluar::class);
+    }
 }

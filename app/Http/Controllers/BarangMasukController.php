@@ -21,7 +21,8 @@ class BarangMasukController extends Controller
         return view('barang-masuk.index', [
             'barangs'      => Barang::all(),
             'barangsMasuk' => BarangMasuk::all(),
-            'suppliers'    => Supplier::all()
+            'suppliers'    => Supplier::all(),
+            'vehicles'     => \App\Models\Vehicle::all()
         ]);
     }
 
@@ -29,8 +30,9 @@ class BarangMasukController extends Controller
     {
         return response()->json([
             'success'   => true,
-            'data'      => BarangMasuk::all(),
-            'supplier'  => Supplier::all()
+            'data'      => BarangMasuk::with(['supplier', 'vehicle'])->get(),
+            'supplier'  => Supplier::all(),
+            'vehicles'  => \App\Models\Vehicle::all()
         ]);
     }
 
@@ -71,6 +73,7 @@ class BarangMasukController extends Controller
             'nama_barang'       => $request->nama_barang,
             'jumlah_masuk'      => $request->jumlah_masuk,
             'supplier_id'       => $request->supplier_id,
+            'vehicle_id'        => $request->vehicle_id,
             'kode_transaksi'    => $request->kode_transaksi,
             'user_id'           => auth()->user()->id
         ]);

@@ -43,8 +43,9 @@
                                 <th>Kode Transaksi</th>
                                 <th>Tanggal Keluar</th>
                                 <th>Nama Barang</th>
-                                <th>Jumlah Masuk</th>
+                                <th>Jumlah Keluar</th>
                                 <th>Customer</th>
+                                <th>Kendaraan</th>
                             </tr>
                         </thead>
                         <tbody id="tabel-laporan-barang-keluar">
@@ -91,19 +92,21 @@
                     if (response.length > 0) {
                         $.each(response, function(index, item) {
                             getCustomerName(item.customer_id, function(customer){
+                                let vehicle = item.vehicle ? `${item.vehicle.plate_number} - ${item.vehicle.make} ${item.vehicle.model}` : '-';
                                 var row = [
                                     (index + 1),
                                     item.kode_transaksi,
                                     item.tanggal_keluar,
                                     item.nama_barang,
                                     item.jumlah_keluar,
-                                    customer
+                                    customer,
+                                    vehicle
                                 ];
                                table.row.add(row).draw(false);
                             });
                         });
                     } else {
-                        var emptyRow = ['','Tidak ada data yang tersedia.', '', '', '', ''];
+                        var emptyRow = ['','Tidak ada data yang tersedia.', '', '', '', '', ''];
                         table.row.add(emptyRow).draw(false); // Tambahkan baris kosong ke DataTable
                     }
                 },

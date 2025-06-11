@@ -60,6 +60,17 @@
                 </div>
   
                 <div class="form-group">
+                  <label>Vehicle</label>
+                  <select class="form-control" name="vehicle_id" id="vehicle_id">
+                    <option value="">Select Vehicle</option>
+                    @foreach ($vehicles as $vehicle)
+                      <option value="{{ $vehicle->id }}">{{ $vehicle->plate_number }} - {{ $vehicle->make }} {{ $vehicle->model }}</option>
+                    @endforeach
+                  </select>
+                  <div class="alert alert-danger mt-2 d-none" role="alert" id="alert-vehicle_id"></div>
+                </div>
+  
+                <div class="form-group">
                   <label>Jumlah Keluar</label>
                   <div class="input-group">
                     <input type="number" class="form-control" name="jumlah_keluar" id="jumlah_keluar" min="0" style="width: 75%;">

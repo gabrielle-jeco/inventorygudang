@@ -45,6 +45,7 @@
                                 <th>Nama Barang</th>
                                 <th>Jumlah Masuk</th>
                                 <th>Supplier</th>
+                                <th>Kendaraan</th>
                             </tr>
                         </thead>
                         <tbody id="tabel-laporan-barang-masuk">
@@ -90,13 +91,15 @@
                 if (response.length > 0) {
                     $.each(response, function(index, item) {
                         getSupplierName(item.supplier_id, function(supplier) {
+                            let vehicle = item.vehicle ? `${item.vehicle.plate_number} - ${item.vehicle.make} ${item.vehicle.model}` : '-';
                             var row = [
                                 (index + 1),
                                 item.kode_transaksi,
                                 item.tanggal_masuk,
                                 item.nama_barang,
                                 item.jumlah_masuk,
-                                supplier
+                                supplier,
+                                vehicle
                             ];
                             table.row.add(row).draw(false); // Tambahkan data yang baru ke DataTable
                         });
