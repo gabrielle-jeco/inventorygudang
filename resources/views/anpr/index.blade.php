@@ -371,69 +371,70 @@ $(document).ready(function() {
     });
 });
 
-function displayResults(data) {
-    const resultImg = document.getElementById('detection-result');
-    const resultsTable = document.getElementById('detection-results');
-    const historySection = document.getElementById('history-section');
-    const historyTable = document.getElementById('transaction-history');
-    
-    // Display the detection image
-    if (data.result_path) {
-        resultImg.src = data.result_path;
-        resultImg.style.display = 'block';
-        resultImg.onerror = function() {
-            resultImg.style.display = 'none';
-            Swal.fire('Error', 'Failed to load detection result image', 'error');
-        };
-    } else {
-        resultImg.style.display = 'none';
+function displayResults(response) {
+    // Show detection result image
+    if (response.result_path) {
+        $('#detection-result').attr('src', response.result_path).show();
     }
-    
+
     // Clear previous results
-    resultsTable.innerHTML = '';
-    if (historyTable) {
-        historyTable.innerHTML = '';
-        historySection.style.display = 'none';
-    }
-    
-    // Display detection results
-    if (data.vehicles && data.vehicles.length > 0) {
-        data.vehicles.forEach(vehicle => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${vehicle.detected_number || 'No plate detected'}</td>
-                <td><span class="badge badge-${vehicle.matched ? 'success' : 'warning'}">${vehicle.matched ? 'Found' : 'Not Found'}</span></td>
-                <td>
-                    ${vehicle.matched ? `
-                        <strong>Plate Number:</strong> ${vehicle.plate_number}<br>
-                        <strong>Make:</strong> ${vehicle.make}<br>
-                        <strong>Model:</strong> ${vehicle.model}
-                    ` : 'Vehicle not registered in system'}
-                </td>
-            `;
-            resultsTable.appendChild(row);
-            
-            // If vehicle is matched and has history, display it
-            if (vehicle.matched && vehicle.barang_history && vehicle.barang_history.length > 0 && historySection) {
-                historySection.style.display = 'block';
-                vehicle.barang_history.forEach(transaction => {
-                    const historyRow = document.createElement('tr');
-                    historyRow.innerHTML = `
-                        <td>${transaction.tanggal}</td>
-                        <td>${transaction.kode_transaksi}</td>
-                        <td><span class="badge badge-${transaction.type === 'masuk' ? 'success' : 'info'}">${transaction.type === 'masuk' ? 'Receiving' : 'Shipping'}</span></td>
-                        <td>${transaction.nama_barang}</td>
-                        <td>${transaction.jumlah}</td>
-                        <td>${transaction.partner}</td>
-                    `;
-                    historyTable.appendChild(historyRow);
-                });
-            }
+    $('#detection-results').empty();
+    $('#transaction-history').empty();
+    $('#history-section').hide();
+
+    // Find detection with highest confidence
+    let bestDetection = null;
+    if (response.vehicles && response.vehicles.length > 0) {
+        bestDetection = response.vehicles.reduce((prev, current) => {
+            return (prev.confidence > current.confidence) ? prev : current;
         });
-    } else {
-        const row = document.createElement('tr');
-        row.innerHTML = '<td colspan="3" class="text-center">No license plates detected</td>';
-        resultsTable.appendChild(row);
+    }
+
+    if (bestDetection) {
+        let plateImage = bestDetection.plate_image ? 
+            `<img src="${bestDetection.plate_image}" alt="Plate Image" class="img-fluid mb-2" style="max-height: 100px;">` : 
+            '';
+        
+        let row = `<tr>
+            <td>
+                ${plateImage}<br>
+                ${bestDetection.detected_number}<br>
+                <small class="text-muted">Confidence: ${(bestDetection.confidence * 100).toFixed(1)}%</small>
+            </td>
+            <td>
+                <span class="badge badge-${bestDetection.matched ? 'success' : 'warning'}">
+                    ${bestDetection.matched ? 'Registered' : 'Not Found'}
+                </span>
+            </td>
+            <td>
+                ${bestDetection.matched ? `
+                    Make: ${bestDetection.make}<br>
+                    Model: ${bestDetection.model}
+                ` : 'Vehicle not registered in system'}
+            </td>
+        </tr>`;
+        
+        $('#detection-results').append(row);
+
+        // If vehicle is matched and has history, display it
+        if (bestDetection.matched && bestDetection.barang_history && bestDetection.barang_history.length > 0) {
+            $('#history-section').show();
+            bestDetection.barang_history.forEach(function(item) {
+                let historyRow = `<tr>
+                    <td>${item.tanggal}</td>
+                    <td>${item.kode_transaksi}</td>
+                    <td>
+                        <span class="badge badge-${item.type === 'masuk' ? 'success' : 'danger'}">
+                            ${item.type === 'masuk' ? 'In' : 'Out'}
+                        </span>
+                    </td>
+                    <td>${item.nama_barang}</td>
+                    <td>${item.jumlah}</td>
+                    <td>${item.partner}</td>
+                </tr>`;
+                $('#transaction-history').append(historyRow);
+            });
+        }
     }
 }
 </script>
