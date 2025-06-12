@@ -115,8 +115,15 @@ class AnprController extends Controller
                 throw new \RuntimeException($process->getErrorOutput());
             }
 
-            // Get the result path
-            $resultPath = 'storage/anpr/results/' . $resultsDir . '/' . $filename;
+            // Get the result path based on file type
+            $fileExtension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+            $isVideo = in_array($fileExtension, ['mp4', 'mov', 'avi']);
+            
+            if ($isVideo) {
+                $resultPath = 'storage/anpr/results/' . $resultsDir . '/output.mp4';
+            } else {
+                $resultPath = 'storage/anpr/results/' . $resultsDir . '/' . $filename;
+            }
             
             // Read detected plates from JSON
             $platesFile = $outputDir . '/plates.json';
@@ -135,6 +142,19 @@ class AnprController extends Controller
                             'error' => json_last_error_msg()
                         ]);
                         $detectedPlates = []; // Reset to empty array on parse error
+                    } else {
+                        // Sort by confidence and take only the highest one
+                        usort($detectedPlates, function($a, $b) {
+                            return $b['confidence'] <=> $a['confidence'];
+                        });
+                        $detectedPlates = [reset($detectedPlates)]; // Keep only the first one
+
+                        // Add full URLs for plate images
+                        foreach ($detectedPlates as &$plate) {
+                            if (isset($plate['plate_image'])) {
+                                $plate['plate_image_url'] = asset('storage/anpr/results/' . $resultsDir . '/' . $plate['plate_image']);
+                            }
+                        }
                     }
                 }
             }
@@ -189,13 +209,17 @@ class AnprController extends Controller
                         'detected_number' => $plateNumber,
                         'confidence' => $plate['confidence'],
                         'matched' => true,
-                        'barang_history' => $barangHistory
+                        'barang_history' => $barangHistory,
+                        'plate_image_url' => $plate['plate_image_url'] ?? null,
+                        'bbox' => $plate['bbox'] ?? null
                     ];
                 } else {
                     $vehicles[] = [
-                        'detected_number' => $plateNumber, // Use cleaned plate number
+                        'detected_number' => $plateNumber,
                         'confidence' => $plate['confidence'],
-                        'matched' => false
+                        'matched' => false,
+                        'plate_image_url' => $plate['plate_image_url'] ?? null,
+                        'bbox' => $plate['bbox'] ?? null
                     ];
                 }
             }

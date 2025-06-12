@@ -44,27 +44,16 @@
                             </form>
                             <div id="result" class="mt-4" style="display: none;">
                                 <h5>Detection Result:</h5>
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <img id="detection-result" src="" alt="Detection Result" class="img-fluid" style="display: none;">
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Detected Plate</th>
-                                                        <th>Status</th>
-                                                        <th>Details</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody id="detection-results">
-                                                </tbody>
-                                            </table>
+                                <div class="col-md-4">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div id="plate-info">
+                                                <!-- Plate info will be populated here -->
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <div id="history-section" style="display: none;">
                                     <h5 class="mt-4">Transaction History</h5>
                                     <div class="table-responsive">
@@ -89,30 +78,39 @@
                     </div>
                     <!-- Webcam Tab -->
                     <div class="tab-pane fade" id="webcam" role="tabpanel" aria-labelledby="webcam-tab">
-                        <div class="p-4 text-center">
+                        <div class="p-4">
                             <div id="webcam-container" class="mb-4" style="display: none;">
-                                <video id="webcam-video" width="640" height="480" autoplay playsinline style="border: 2px solid #ccc; border-radius: 8px;"></video>
-                                <canvas id="capture-canvas" style="display: none;"></canvas>
-                                <div class="mt-3">
-                                    <button type="button" class="btn btn-success" id="captureBtn" style="display: none;">
-                                        <i class="fas fa-camera"></i> Capture Frame
-                                    </button>
-                                </div>
-                                <div id="capture-result" class="mt-4" style="display: none;">
-                                    <h5>Capture Result:</h5>
-                                    <div id="captureContent" class="text-center">
-                                        <!-- Capture result will be displayed here -->
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <video id="webcam-video" width="100%" autoplay playsinline style="border: 2px solid #ccc; border-radius: 8px;"></video>
+                                        <canvas id="capture-canvas" style="display: none;"></canvas>
+                                        <div class="mt-3 text-center">
+                                            <button type="button" class="btn btn-success" id="captureBtn" style="display: none;">
+                                                <i class="fas fa-camera"></i> Capture Frame
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div id="captureVehicleInfo" class="mt-4">
-                                        <!-- Vehicle information will be displayed here -->
+                                    <div class="col-md-4">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <div id="webcam-plate-info">
+                                                    <div class="text-center text-muted">
+                                                        <i class="fas fa-camera fa-3x mb-2"></i>
+                                                        <p>Capture a frame to detect license plate</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-primary" id="startWebcam">
-                                <i class="fas fa-play"></i> Start Webcam Detection
-                            </button>
-                            <p class="mt-3 text-muted">Press 'Q' to stop the webcam detection</p>
-                            <div id="error-message" class="alert alert-danger mt-3" style="display: none;"></div>
+                            <div class="text-center">
+                                <button type="button" class="btn btn-primary" id="startWebcam">
+                                    <i class="fas fa-play"></i> Start Webcam Detection
+                                </button>
+                                <p class="mt-3 text-muted">Press 'Q' to stop the webcam detection</p>
+                                <div id="error-message" class="alert alert-danger mt-3" style="display: none;"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -140,10 +138,10 @@ $(document).ready(function() {
     // Handle file upload
     $('#uploadForm').on('submit', function(e) {
         e.preventDefault();
-        
+
         let formData = new FormData(this);
         $('#uploadBtn').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
-        
+
         $.ajax({
             url: "{{ route('anpr.detect') }}",
             type: 'POST',
@@ -180,7 +178,7 @@ $(document).ready(function() {
             errorDiv.hide();
 
             // First, request webcam access
-            const stream = await navigator.mediaDevices.getUserMedia({ 
+            const stream = await navigator.mediaDevices.getUserMedia({
                 video: true,
                 audio: false
             });
@@ -203,12 +201,12 @@ $(document).ready(function() {
                             console.error('Error stopping detection:', error);
                         }
                     }
-                    
+
                     // Stop the webcam stream
                     stream.getTracks().forEach(track => track.stop());
                     webcamContainer.hide();
                     button.prop('disabled', false).html('<i class="fas fa-play"></i> Start Webcam Detection');
-                    
+
                     // Remove the key press handler
                     document.removeEventListener('keypress', handleKeyPress);
                 }
@@ -228,19 +226,19 @@ $(document).ready(function() {
                 // Set canvas dimensions to match video
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
-                
+
                 // Draw current video frame to canvas
                 canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                
+
                 // Show processing state
                 captureBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
-                
+
                 // Convert canvas to blob
                 canvas.toBlob(function(blob) {
                     const formData = new FormData();
                     formData.append('source', blob, 'capture.jpg');
                     formData.append('_token', '{{ csrf_token() }}');
-                    
+
                     // Send to server for processing
                     $.ajax({
                         url: "{{ route('anpr.detect') }}",
@@ -249,57 +247,12 @@ $(document).ready(function() {
                         processData: false,
                         contentType: false,
                         success: function(response) {
-                            $('#capture-result').show();
-                            
-                            // Display the processed image
-                            if (response.result_path) {
-                                const img = new Image();
-                                img.onload = function() {
-                                    $('#captureContent').html(this);
-                                    $(this).addClass('img-fluid').attr('alt', 'Capture Result');
-                                };
-                                img.onerror = function() {
-                                    $('#captureContent').html('<div class="alert alert-danger">Failed to load detection result image</div>');
-                                };
-                                img.src = response.result_path;
-                            } else {
-                                $('#captureContent').html('<div class="alert alert-warning">No detection result image available</div>');
-                            }
-                            
-                            // Display vehicle information
-                            let vehicleHtml = '<div class="table-responsive"><table class="table table-bordered mt-3">';
-                            vehicleHtml += '<thead><tr><th>Detected Plate</th><th>Status</th><th>Details</th></tr></thead><tbody>';
-                            
-                            if (response.vehicles && response.vehicles.length > 0) {
-                                response.vehicles.forEach(function(vehicle) {
-                                    vehicleHtml += '<tr>';
-                                    vehicleHtml += `<td>${vehicle.detected_number || 'No plate detected'}</td>`;
-                                    if (vehicle.matched) {
-                                        vehicleHtml += '<td><span class="badge badge-success">Found</span></td>';
-                                        vehicleHtml += `<td>
-                                            <strong>Plate Number:</strong> ${vehicle.plate_number}<br>
-                                            <strong>Make:</strong> ${vehicle.make}<br>
-                                            <strong>Model:</strong> ${vehicle.model}
-                                        </td>`;
-                                    } else {
-                                        vehicleHtml += '<td><span class="badge badge-danger">Not Found</span></td>';
-                                        vehicleHtml += '<td>No matching vehicle found in database</td>';
-                                    }
-                                    vehicleHtml += '</tr>';
-                                });
-                            } else {
-                                vehicleHtml += '<tr><td colspan="3" class="text-center">No license plates detected</td></tr>';
-                            }
-                            
-                            vehicleHtml += '</tbody></table></div>';
-                            $('#captureVehicleInfo').html(vehicleHtml);
-                            
-                            // Reset capture button
+                            displayWebcamResults(response);
                             captureBtn.prop('disabled', false).html('<i class="fas fa-camera"></i> Capture Frame');
                         },
                         error: function(xhr) {
                             const errorMsg = xhr.responseJSON?.message || 'An error occurred while processing the capture';
-                            $('#captureContent').html(`<div class="alert alert-danger">${errorMsg}</div>`);
+                            $('#webcam-plate-info').html(`<div class="alert alert-danger">${errorMsg}</div>`);
                             captureBtn.prop('disabled', false).html('<i class="fas fa-camera"></i> Capture Frame');
                         }
                     });
@@ -318,7 +271,7 @@ $(document).ready(function() {
                         processPid = response.pid;
                         // Change button text to show active detection
                         button.html('<i class="fas fa-circle text-danger"></i> Detection Running...');
-                        
+
                         Swal.fire({
                             title: 'Detection Started',
                             text: 'Webcam detection started. Press Q to stop.',
@@ -341,12 +294,12 @@ $(document).ready(function() {
                                         }
                                     });
                                 }
-                                
+
                                 // Stop the webcam stream
                                 stream.getTracks().forEach(track => track.stop());
                                 webcamContainer.hide();
                                 button.prop('disabled', false).html('<i class="fas fa-play"></i> Start Webcam Detection');
-                                
+
                                 // Remove the key press handler
                                 document.removeEventListener('keypress', handleKeyPress);
                             }
@@ -372,54 +325,61 @@ $(document).ready(function() {
 });
 
 function displayResults(response) {
-    // Show detection result image
-    if (response.result_path) {
-        $('#detection-result').attr('src', response.result_path).show();
-    }
-
     // Clear previous results
-    $('#detection-results').empty();
+    $('#plate-info').empty();
     $('#transaction-history').empty();
     $('#history-section').hide();
+    $('#result').hide(); // Hide result section by default
 
-    // Find detection with highest confidence
-    let bestDetection = null;
+    // Only show results if we have vehicle detections
     if (response.vehicles && response.vehicles.length > 0) {
-        bestDetection = response.vehicles.reduce((prev, current) => {
-            return (prev.confidence > current.confidence) ? prev : current;
-        });
-    }
+        $('#result').show(); // Show result section only if we have detections
 
-    if (bestDetection) {
-        let plateImage = bestDetection.plate_image ? 
-            `<img src="${bestDetection.plate_image}" alt="Plate Image" class="img-fluid mb-2" style="max-height: 100px;">` : 
+        // Show detection result image
+        if (response.result_path) {
+            $('#detection-result').attr('src', response.result_path).show();
+        }
+
+        const vehicle = response.vehicles[0]; // Take only the first vehicle (highest confidence)
+        let plateImage = vehicle.plate_image_url ?
+            `<img src="${vehicle.plate_image_url}" alt="Plate Image" class="img-fluid mb-3 rounded shadow-sm" style="max-width: 100%;">` :
             '';
-        
-        let row = `<tr>
-            <td>
-                ${plateImage}<br>
-                ${bestDetection.detected_number}<br>
-                <small class="text-muted">Confidence: ${(bestDetection.confidence * 100).toFixed(1)}%</small>
-            </td>
-            <td>
-                <span class="badge badge-${bestDetection.matched ? 'success' : 'warning'}">
-                    ${bestDetection.matched ? 'Registered' : 'Not Found'}
-                </span>
-            </td>
-            <td>
-                ${bestDetection.matched ? `
-                    Make: ${bestDetection.make}<br>
-                    Model: ${bestDetection.model}
-                ` : 'Vehicle not registered in system'}
-            </td>
-        </tr>`;
-        
-        $('#detection-results').append(row);
+
+        let plateInfo = `
+            <div class="text-center mb-4">
+                ${plateImage}
+                <h4 class="mb-2">${vehicle.detected_number}</h4>
+                <div class="badge badge-${vehicle.matched ? 'success' : 'warning'} mb-3">
+                    ${vehicle.matched ? 'Registered' : 'Not Found'}
+                </div>
+                <div class="text-muted small mb-3">
+                    Confidence: ${(vehicle.confidence * 100).toFixed(1)}%
+                </div>
+            </div>`;
+
+        if (vehicle.matched) {
+            plateInfo += `
+                <div class="vehicle-details">
+                    <div class="mb-2">
+                        <strong>Make:</strong> ${vehicle.make}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Model:</strong> ${vehicle.model}
+                    </div>
+                </div>`;
+        } else {
+            plateInfo += `
+                <div class="alert alert-warning text-center">
+                    Vehicle not registered in system
+                </div>`;
+        }
+
+        $('#plate-info').html(plateInfo);
 
         // If vehicle is matched and has history, display it
-        if (bestDetection.matched && bestDetection.barang_history && bestDetection.barang_history.length > 0) {
+        if (vehicle.matched && vehicle.barang_history && vehicle.barang_history.length > 0) {
             $('#history-section').show();
-            bestDetection.barang_history.forEach(function(item) {
+            vehicle.barang_history.forEach(function(item) {
                 let historyRow = `<tr>
                     <td>${item.tanggal}</td>
                     <td>${item.kode_transaksi}</td>
@@ -435,8 +395,59 @@ function displayResults(response) {
                 $('#transaction-history').append(historyRow);
             });
         }
+    } else {
+        $('#plate-info').html(`
+            <div class="alert alert-warning text-center">
+                No license plates detected
+            </div>`);
+    }
+}
+
+function displayWebcamResults(response) {
+    // Display the detection with highest confidence
+    if (response.vehicles && response.vehicles.length > 0) {
+        const vehicle = response.vehicles[0]; // Take only the first vehicle (highest confidence)
+        let plateImage = vehicle.plate_image_url ?
+            `<img src="${vehicle.plate_image_url}" alt="Plate Image" class="img-fluid mb-3 rounded shadow-sm" style="max-width: 100%;">` :
+            '';
+
+        let plateInfo = `
+            <div class="text-center mb-4">
+                ${plateImage}
+                <h4 class="mb-2">${vehicle.detected_number}</h4>
+                <div class="badge badge-${vehicle.matched ? 'success' : 'warning'} mb-3">
+                    ${vehicle.matched ? 'Registered' : 'Not Found'}
+                </div>
+                <div class="text-muted small mb-3">
+                    Confidence: ${(vehicle.confidence * 100).toFixed(1)}%
+                </div>
+            </div>`;
+
+        if (vehicle.matched) {
+            plateInfo += `
+                <div class="vehicle-details">
+                    <div class="mb-2">
+                        <strong>Make:</strong> ${vehicle.make}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Model:</strong> ${vehicle.model}
+                    </div>
+                </div>`;
+        } else {
+            plateInfo += `
+                <div class="alert alert-warning text-center">
+                    Vehicle not registered in system
+                </div>`;
+        }
+
+        $('#webcam-plate-info').html(plateInfo);
+    } else {
+        $('#webcam-plate-info').html(`
+            <div class="alert alert-warning text-center">
+                No license plates detected
+            </div>`);
     }
 }
 </script>
 @endpush
-@endsection 
+@endsection
