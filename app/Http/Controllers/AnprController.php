@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Symfony\Component\Process\Process;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use App\Models\BarangMasuk;
+use App\Models\BarangKeluar;
 
 class AnprController extends Controller
 {
@@ -41,6 +43,11 @@ class AnprController extends Controller
             'USERPROFILE' => getenv('USERPROFILE'),
             'CUDA_VISIBLE_DEVICES' => '0'  // Specify GPU device if available
         ];
+    }
+
+    private function cleanPlateNumber($plateNumber) {
+        // Remove any non-alphanumeric characters (keeping only A-Z, a-z, 0-9)
+        return preg_replace('/[^A-Za-z0-9]/', '', $plateNumber);
     }
 
     public function detect(Request $request)
@@ -135,42 +142,43 @@ class AnprController extends Controller
             // Search for vehicles with detected plate numbers
             $vehicles = [];
             foreach ($detectedPlates as $plate) {
-                $plateNumber = $plate['text'];
+                $plateNumber = $this->cleanPlateNumber($plate['text']); // Clean the plate number
                 $vehicle = \App\Models\Vehicle::where('plate_number', 'LIKE', '%' . $plateNumber . '%')->first();
+                
                 if ($vehicle) {
-                    // Get barang history
-                    $barangMasuk = $vehicle->barangMasuks()
-                        ->with('supplier')
-                        ->orderBy('tanggal_masuk', 'desc')
+                    // Get vehicle's transaction history from both BarangMasuk and BarangKeluar
+                    $barangMasuk = BarangMasuk::where('vehicle_id', $vehicle->id)
+                        ->orderBy('created_at', 'desc')
                         ->get()
-                        ->map(function($bm) {
+                        ->map(function($history) {
                             return [
+                                'tanggal' => $history->created_at->format('Y-m-d H:i:s'),
+                                'kode_transaksi' => $history->kode_transaksi,
                                 'type' => 'masuk',
-                                'kode_transaksi' => $bm->kode_transaksi,
-                                'tanggal' => $bm->tanggal_masuk,
-                                'nama_barang' => $bm->nama_barang,
-                                'jumlah' => $bm->jumlah_masuk,
-                                'partner' => $bm->supplier->supplier
+                                'nama_barang' => $history->nama_barang,
+                                'jumlah' => $history->jumlah_masuk,
+                                'partner' => $history->supplier->supplier
                             ];
                         });
 
-                    $barangKeluar = $vehicle->barangKeluars()
-                        ->with('customer')
-                        ->orderBy('tanggal_keluar', 'desc')
+                    $barangKeluar = BarangKeluar::where('vehicle_id', $vehicle->id)
+                        ->orderBy('created_at', 'desc')
                         ->get()
-                        ->map(function($bk) {
+                        ->map(function($history) {
                             return [
+                                'tanggal' => $history->created_at->format('Y-m-d H:i:s'),
+                                'kode_transaksi' => $history->kode_transaksi,
                                 'type' => 'keluar',
-                                'kode_transaksi' => $bk->kode_transaksi,
-                                'tanggal' => $bk->tanggal_keluar,
-                                'nama_barang' => $bk->nama_barang,
-                                'jumlah' => $bk->jumlah_keluar,
-                                'partner' => $bk->customer->customer
+                                'nama_barang' => $history->nama_barang,
+                                'jumlah' => $history->jumlah_keluar,
+                                'partner' => $history->customer->customer
                             ];
                         });
 
+                    // Combine and sort both histories
                     $barangHistory = $barangMasuk->concat($barangKeluar)
                         ->sortByDesc('tanggal')
+                        ->take(10)
                         ->values()
                         ->all();
 
@@ -185,7 +193,7 @@ class AnprController extends Controller
                     ];
                 } else {
                     $vehicles[] = [
-                        'detected_number' => $plateNumber,
+                        'detected_number' => $plateNumber, // Use cleaned plate number
                         'confidence' => $plate['confidence'],
                         'matched' => false
                     ];
