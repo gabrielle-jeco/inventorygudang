@@ -1,0 +1,16 @@
+# ============================================
+# 📋 CONTOH FILE VARIABLES
+# ============================================
+# Copy file ini menjadi terraform.tfvars dan isi dengan data kamu
+# JANGAN commit file terraform.tfvars ke Git (berisi info sensitif)
+
+project_id = "your-gcp-project-id"
+region     = "asia-southeast2"
+zone       = "asia-southeast2-a"
+
+cluster_name = "inventorygudang-cluster"
+node_count   = 2
+machine_type = "e2-medium"
+
+environment = "dev"
+

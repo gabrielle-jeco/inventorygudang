@@ -1,0 +1,51 @@
+# ============================================
+# 🌐 SERVICE - Cara Akses Aplikasi
+# ============================================
+# Service seperti "pintu masuk" ke aplikasi
+# User akses aplikasi melalui Service, bukan langsung ke pod
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventorygudang-service
+  namespace: inventorygudang
+  labels:
+    app: inventorygudang
+spec:
+  type: ClusterIP  # Internal service (hanya bisa diakses dari dalam cluster)
+  # Untuk akses dari internet, pakai LoadBalancer atau Ingress
+  
+  # Port configuration
+  ports:
+  - port: 80           # Port yang digunakan service
+    targetPort: 8080   # Port di container
+    protocol: TCP
+    name: http
+  
+  # Selector (cara menemukan pod yang akan dilayani)
+  selector:
+    app: inventorygudang
+    tier: backend
+
+---
+# ALTERNATIF: LoadBalancer (Akses dari Internet)
+# Uncomment jika mau akses langsung dari internet
+
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: inventorygudang-service
+#   namespace: inventorygudang
+#   labels:
+#     app: inventorygudang
+# spec:
+#   type: LoadBalancer  # Google Cloud akan buatkan IP public
+#   ports:
+#   - port: 80
+#     targetPort: 8080
+#     protocol: TCP
+#     name: http
+#   selector:
+#     app: inventorygudang
+#     tier: backend
+

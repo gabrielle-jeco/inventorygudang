@@ -1,0 +1,44 @@
+# ============================================
+# 🚪 INGRESS - Pintu Masuk dengan Domain
+# ============================================
+# Ingress seperti "pintu masuk" dengan nama domain
+# Lebih baik dari LoadBalancer karena bisa pakai SSL, multiple domain, dll
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: inventorygudang-ingress
+  namespace: inventorygudang
+  annotations:
+    # Google Cloud Load Balancer
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "inventorygudang-ip"  # Reserve IP dulu
+    networking.gke.io/managed-certificates: "inventorygudang-ssl-cert"
+    
+    # Redirect HTTP ke HTTPS
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  rules:
+  - host: your-domain.com  # Ganti dengan domain kamu
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: inventorygudang-service
+            port:
+              number: 80
+
+---
+# Managed Certificate (SSL/TLS Otomatis dari Google)
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: inventorygudang-ssl-cert
+  namespace: inventorygudang
+spec:
+  domains:
+    - your-domain.com  # Ganti dengan domain kamu
+    - www.your-domain.com  # Opsional: subdomain
+

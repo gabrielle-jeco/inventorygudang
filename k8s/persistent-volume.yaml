@@ -1,0 +1,26 @@
+# ============================================
+# 💾 PERSISTENT VOLUME - Storage Permanen
+# ============================================
+# Persistent Volume untuk menyimpan data yang tidak boleh hilang
+# (seperti file upload, logs, dll)
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: inventorygudang-storage
+  namespace: inventorygudang
+spec:
+  accessModes:
+    - ReadWriteOnce  # Hanya bisa dibaca/tulis oleh 1 pod
+  resources:
+    requests:
+      storage: 10Gi  # Ukuran storage: 10 GB
+  storageClassName: standard-rwo  # Google Cloud standard storage
+
+---
+# Untuk update deployment.yaml, tambahkan di volumes:
+# volumes:
+# - name: storage
+#   persistentVolumeClaim:
+#     claimName: inventorygudang-storage
+

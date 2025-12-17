@@ -1,0 +1,14 @@
+# ============================================
+# 📦 NAMESPACE - Ruang Khusus untuk Aplikasi
+# ============================================
+# Namespace seperti "ruang" terpisah di dalam cluster
+# Berguna untuk memisahkan aplikasi (dev, staging, production)
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: inventorygudang
+  labels:
+    name: inventorygudang
+    environment: dev
+

@@ -1,0 +1,66 @@
+# ============================================
+# ⚙️ JENKINS CONFIGURATION AS CODE (JCasC)
+# ============================================
+# File konfigurasi Jenkins menggunakan JCasC
+# Install plugin: configuration-as-code
+
+jenkins:
+  systemMessage: "Inventory Gudang CI/CD Server"
+  
+  numExecutors: 2
+  
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: "admin"
+          password: "${JENKINS_ADMIN_PASSWORD}"
+  
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  
+  clouds:
+    - kubernetes:
+        name: "gke"
+        serverUrl: "https://kubernetes.default"
+        namespace: "jenkins"
+        credentialsId: "gke-credentials"
+        jenkinsUrl: "http://jenkins:8080"
+        jenkinsTunnel: "jenkins-agent:50000"
+        containerCap: 10
+        maxRequestsPerHost: 32
+        retentionTimeout: 5
+  
+  credentials:
+    system:
+      domainCredentials:
+        - credentials:
+          - googleServiceAccount:
+              scope: GLOBAL
+              id: "gcp-service-account"
+              projectId: "${GCP_PROJECT_ID}"
+              keyFile: "/var/jenkins_home/gcp-key.json"
+              description: "Google Cloud Service Account"
+  
+  tool:
+    git:
+      installations:
+        - name: "Default"
+          home: "git"
+    docker:
+      installations:
+        - name: "Docker"
+          dockerHome: "/usr/bin/docker"
+
+unclassified:
+  location:
+    adminAddress: "admin@example.com"
+    url: "http://jenkins.example.com"
+  
+  timestamper:
+    allPipelines: true
+  
+  buildStepOperation:
+    enabled: true
+

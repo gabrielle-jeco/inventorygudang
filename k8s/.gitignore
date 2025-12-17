@@ -1,0 +1,4 @@
+# File yang tidak perlu di-commit
+secret.yaml
+*.yaml.backup
+

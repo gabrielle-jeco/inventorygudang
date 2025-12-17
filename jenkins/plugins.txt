@@ -1,0 +1,40 @@
+# ============================================
+# 📦 JENKINS PLUGINS LIST
+# ============================================
+# List plugin yang diperlukan untuk CI/CD
+# Install dengan: jenkins-plugin-cli --plugins $(cat jenkins/plugins.txt | tr '\n' ' ')
+
+# Core plugins
+git
+workflow-aggregator
+pipeline-stage-view
+
+# Docker
+docker-workflow
+docker-plugin
+
+# Kubernetes
+kubernetes
+kubernetes-cli
+
+# Google Cloud
+google-cloud-platform
+google-oauth-plugin
+
+# UI
+blueocean
+ansicolor
+
+# Credentials
+credentials-binding
+plain-credentials
+
+# Notifications (opsional)
+slack
+email-ext
+
+# Utilities
+timestamper
+build-timeout
+warnings-ng
+

@@ -1,0 +1,33 @@
+# ============================================
+# ⚙️ CONFIGMAP - Konfigurasi Aplikasi
+# ============================================
+# ConfigMap menyimpan konfigurasi aplikasi (bukan rahasia)
+# Seperti file .env tapi untuk Kubernetes
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventorygudang-config
+  namespace: inventorygudang
+data:
+  # Laravel configuration
+  APP_NAME: "Inventory Gudang"
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_URL: "https://your-domain.com"
+  
+  # Logging
+  LOG_CHANNEL: "stack"
+  LOG_LEVEL: "info"
+  
+  # Session
+  SESSION_DRIVER: "cookie"
+  SESSION_LIFETIME: "120"
+  
+  # Cache
+  CACHE_DRIVER: "file"
+  QUEUE_CONNECTION: "sync"
+  
+  # File storage
+  FILESYSTEM_DISK: "local"
+

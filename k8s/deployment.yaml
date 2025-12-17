@@ -1,0 +1,127 @@
+# ============================================
+# 🚀 DEPLOYMENT - Cara Deploy Aplikasi
+# ============================================
+# Deployment seperti "resep" untuk menjalankan aplikasi
+# Kubernetes akan membuat dan mengelola pod (container) sesuai resep ini
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventorygudang-app
+  namespace: inventorygudang
+  labels:
+    app: inventorygudang
+    tier: backend
+spec:
+  # Jumlah replica (copy aplikasi)
+  # 3 replica = 3 copy aplikasi jalan bersamaan (untuk load balancing)
+  replicas: 3
+  
+  # Strategy untuk update
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Tambah 1 pod saat update
+      maxUnavailable: 0  # Jangan sampai tidak ada pod yang jalan
+  
+  # Selector (cara Kubernetes menemukan pod)
+  selector:
+    matchLabels:
+      app: inventorygudang
+      tier: backend
+  
+  # Template untuk pod
+  template:
+    metadata:
+      labels:
+        app: inventorygudang
+        tier: backend
+    spec:
+      # Container (aplikasi Laravel)
+      containers:
+      - name: inventorygudang
+        # Image Docker (ganti dengan image kamu)
+        # Format: gcr.io/PROJECT_ID/inventorygudang:TAG
+        image: gcr.io/YOUR_PROJECT_ID/inventorygudang:latest
+        
+        # Port yang digunakan aplikasi
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        
+        # Environment variables dari ConfigMap dan Secret
+        envFrom:
+        - configMapRef:
+            name: inventorygudang-config
+        - secretRef:
+            name: inventorygudang-secret
+        
+        # Resource limits (batas CPU & RAM)
+        resources:
+          requests:
+            cpu: "200m"      # Request minimum: 0.2 CPU
+            memory: "512Mi"  # Request minimum: 512 MB RAM
+          limits:
+            cpu: "1000m"     # Limit maksimum: 1 CPU
+            memory: "1Gi"    # Limit maksimum: 1 GB RAM
+        
+        # Health check (cek apakah aplikasi sehat)
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60   # Tunggu 60 detik sebelum cek pertama
+          periodSeconds: 30         # Cek setiap 30 detik
+          timeoutSeconds: 5
+          failureThreshold: 3       # Kalau gagal 3x, restart pod
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30   # Tunggu 30 detik sebelum cek pertama
+          periodSeconds: 10         # Cek setiap 10 detik
+          timeoutSeconds: 5
+          failureThreshold: 3       # Kalau gagal 3x, tidak kirim traffic
+        
+        # Volume untuk storage (Laravel butuh storage/ dan bootstrap/cache/)
+        volumeMounts:
+        - name: storage
+          mountPath: /var/www/html/storage
+        - name: cache
+          mountPath: /var/www/html/bootstrap/cache
+      
+      # Volume (tempat menyimpan data)
+      volumes:
+      - name: storage
+        emptyDir: {}  # Temporary storage (data hilang kalau pod dihapus)
+        # Untuk persistent storage, pakai PersistentVolumeClaim
+      - name: cache
+        emptyDir: {}
+      
+      # Init container (jalan sebelum container utama)
+      # Untuk setup Laravel (migrate, cache, dll)
+      initContainers:
+      - name: init-laravel
+        image: gcr.io/YOUR_PROJECT_ID/inventorygudang:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Running Laravel setup..."
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          # php artisan migrate --force  # Uncomment jika mau auto-migrate
+        envFrom:
+        - configMapRef:
+            name: inventorygudang-config
+        - secretRef:
+            name: inventorygudang-secret
+        volumeMounts:
+        - name: storage
+          mountPath: /var/www/html/storage
+        - name: cache
+          mountPath: /var/www/html/bootstrap/cache
+
